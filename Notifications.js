@@ -2,14 +2,17 @@ import React, { Component } from "react";
 import { Table, Header, Image, Grid } from "semantic-ui-react";
 import ChatBody from "../../components/ChatBody";
 import Nochats from "../../components/NoChats";
-import "./Notifications.css";
+import "./Organization.css";
 import { db } from "../../firebase/firebase";
+import Admin from "../../abis/Admin.json";
+import { toast } from "react-toastify";
 
-export default class Notifications extends Component {
+export default class NotificationsOrg extends Component {
   colour = ["b6e498", "61dafb", "764abc", "83cd29", "00d1b2"];
   state = {
     curr: {},
     conversations: [],
+    admin: "",
   };
 
   componentDidMount = async () => {
@@ -22,7 +25,17 @@ export default class Notifications extends Component {
       .onSnapshot((snapshot) =>
         this.setState({ conversations: snapshot.docs.map((doc) => doc.data()) })
       );
-    console.log(this.state.conversations);
+    const networkId = await web3.eth.net.getId();
+    const AdminData = await Admin.networks[networkId];
+    if (AdminData) {
+      const admin = await new web3.eth.Contract(Admin.abi, AdminData.address);
+      const owner = await admin?.methods?.owner().call();
+      this.setState({
+        admin: owner,
+      });
+    } else {
+      toast.error("The Admin Contract does not exist on this network!");
+    }
   };
 
   genImg = (name) => {
@@ -111,6 +124,10 @@ export default class Notifications extends Component {
                   ethAddress={this.state.curr.ethAddress}
                   avatar={this.state.curr.avatar}
                   key={this.state.curr.ethAddress}
+                  isEndorsementReq={
+                    this.state.curr.ethAddress !== this.state.admin
+                  }
+                  org
                 />
               ) : (
                 <Nochats />
